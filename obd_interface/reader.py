@@ -1,5 +1,3 @@
-# obd/reader.py
-
 import random
 
 import obd
@@ -12,17 +10,30 @@ class OBDReader:
         self.connection = connection
 
     def read(self, command):
-        """Read a single OBD-II parameter."""
+        """Read a single OBD-II parameter as a plain number (or None)."""
 
         if self.connection.simulation:
             return self._simulate(command)
+
+        if not self.connection.connected:
+            return None
 
         response = self.connection.connection.query(command)
 
         if response.is_null():
             return None
 
-        return response.value
+        return response.value.magnitude
+
+    def read_parameters(self, parameters):
+        """Read multiple vehicle parameters."""
+
+        results = {}
+
+        for key, parameter in parameters.items():
+            results[key] = self.read(parameter["command"])
+
+        return results
 
     def _simulate(self, command):
         """Generate simulated vehicle data for development."""

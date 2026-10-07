@@ -1,6 +1,4 @@
-# obd/connection.py
-
-import obd_interface
+import obd
 
 
 class OBDConnection:
@@ -11,20 +9,15 @@ class OBDConnection:
         self.connection = None
 
         if not simulation:
-            self.connection = obd_interface.OBD(port)
+            self.connection = obd.OBD(port)
 
     @property
     def connected(self):
         if self.simulation:
             return True
-
         return self.connection is not None and self.connection.is_connected()
 
     def status(self):
         if self.simulation:
             return "Simulation Mode"
-
-        if self.connected:
-            return "Connected"
-
-        return "Disconnected"
+        return "Connected" if self.connected else "Disconnected"

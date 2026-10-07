@@ -1,64 +1,49 @@
 import streamlit as st
-import obd
 
 from obd_interface.connection import OBDConnection
 from obd_interface.reader import OBDReader
+from obd_interface.parameters import PARAMETERS
 
-
-st.set_page_config(
-    page_title="AutoScope",
-    page_icon="🚗",
-    layout="wide",
-)
+# Must be the first Streamlit call
+st.set_page_config(page_title="AutoScope", page_icon="🚗", layout="wide")
 
 st.title("🚗 AutoScope")
 st.caption("Python-based OBD-II vehicle diagnostics and data analysis")
 
 
-# Connection
-connection = OBDConnection(simulation=True)
-reader = OBDReader(connection)
+@st.cache_resource
+def get_reader():
+    connection = OBDConnection(simulation=True)
+    return connection, OBDReader(connection)
 
+
+connection, reader = get_reader()
 
 # Connection status
 st.subheader("Connection")
-
 if connection.connected:
     st.success(connection.status())
 else:
     st.error(connection.status())
 
 
+def show_metric(key, value, decimals):
+    p = PARAMETERS[key]
+    text = "N/A" if value is None else f"{value:.{decimals}f} {p['unit']}"
+    st.metric(p["name"], text)
+
+
 # Vehicle data
 st.subheader("Vehicle Data")
 
-rpm = reader.read(obd.commands.RPM)
-speed = reader.read(obd.commands.SPEED)
-coolant = reader.read(obd.commands.COOLANT_TEMP)
-throttle = reader.read(obd.commands.THROTTLE_POS)
-load = reader.read(obd.commands.ENGINE_LOAD)
-intake_temp = reader.read(obd.commands.INTAKE_TEMP)
+data = reader.read_parameters(PARAMETERS)
 
+layout = [
+    [("rpm", 0), ("speed", 0), ("coolant_temp", 1)],
+    [("throttle", 1), ("engine_load", 1), ("intake_temp", 1)],
+]
 
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.metric("RPM", f"{rpm:.0f}")
-
-with col2:
-    st.metric("Speed", f"{speed:.0f} km/h")
-
-with col3:
-    st.metric("Coolant", f"{coolant:.1f} °C")
-
-
-col4, col5, col6 = st.columns(3)
-
-with col4:
-    st.metric("Throttle", f"{throttle:.1f}%")
-
-with col5:
-    st.metric("Engine Load", f"{load:.1f}%")
-
-with col6:
-    st.metric("Intake Temperature", f"{intake_temp:.1f} °C")
+for row in layout:
+    for col, (key, decimals) in zip(st.columns(3), row):
+        with col:
+            show_metric(key, data[key], decimals)
